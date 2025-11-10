@@ -1,13 +1,15 @@
 import time
 from typing import Any, Dict, Optional
+from uuid import uuid4
 
 import streamlit as st
 
+from services.auth_store import delete_auth_session, load_auth_session, save_auth_session
 from services.supabase_service import (
     cached_user_subscriptions,
     init_supabase,
 )
-from utils.query_params import get_query_params, set_query_params
+from utils.query_params import get_query_params, remove_query_params, set_query_params
 from views.auth import render_login
 from views.chat import render_chat_interface
 from views.exercises import render_exercises_interface
@@ -69,9 +71,30 @@ def _extract_session_tokens(session: Any) -> Optional[Dict[str, Any]]:
 
 def restore_supabase_session(sb_client):
     """Restaura la sesión de Supabase si existen tokens almacenados."""
+    query_params = get_query_params()
     session_data = st.session_state.get("auth_session")
     access_token = None
     refresh_token = None
+    auth_token = st.session_state.get("auth_token")
+
+    if not auth_token:
+        token_from_url = query_params.get("auth_token")
+        if isinstance(token_from_url, list):
+            token_from_url = token_from_url[0] if token_from_url else None
+        auth_token = token_from_url
+        if auth_token:
+            st.session_state.auth_token = auth_token
+
+    if auth_token and not session_data:
+        stored = load_auth_session(auth_token)
+        if stored:
+            session_data = stored.get("session")
+            user_data = stored.get("user")
+            if session_data:
+                st.session_state.auth_session = session_data
+            if user_data and not st.session_state.get("auth_user"):
+                st.session_state.auth_user = user_data
+
     if session_data:
         access_token = session_data.get("access_token")
         refresh_token = session_data.get("refresh_token")
@@ -88,6 +111,13 @@ def restore_supabase_session(sb_client):
             sb_client.set_session(access_token, refresh_token)
         except Exception:
             pass
+    if st.session_state.get("auth_session"):
+        if not auth_token:
+            auth_token = str(uuid4())
+            st.session_state.auth_token = auth_token
+        save_auth_session(auth_token, st.session_state["auth_session"], st.session_state.get("auth_user") or {})
+        if auth_token and auth_token not in (query_params.get("auth_token") or []):
+            set_query_params(auth_token=auth_token)
 
 
 def ensure_state_defaults():
@@ -128,10 +158,14 @@ def apply_query_params_state():
 
 def handle_logout(sb_client):
     """Cierra la sesión en Supabase y limpia el estado local."""
+    auth_token = st.session_state.get("auth_token")
     try:
         sb_client.sign_out()
     except Exception:
         pass
+
+    delete_auth_session(auth_token)
+    remove_query_params("auth_token")
 
     st.session_state.clear()
 
@@ -140,7 +174,7 @@ def handle_logout(sb_client):
     except Exception:
         pass
 
-    st.experimental_rerun()
+    safe_rerun()
 
 
 def main():

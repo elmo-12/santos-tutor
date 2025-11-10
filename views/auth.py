@@ -4,7 +4,11 @@ from typing import Any, Optional
 
 import streamlit as st
 
+from uuid import uuid4
+
+from services.auth_store import save_auth_session
 from services.supabase_client import SupabaseClient
+from utils.query_params import set_query_params
 
 
 def _extract_value(obj: Any, attr: str):
@@ -80,6 +84,11 @@ def render_login(sb_client: SupabaseClient):
             st.session_state.user_id = user_data.get("id")
             st.session_state.supabase_access_token = session_data.get("access_token")
             st.session_state.supabase_refresh_token = session_data.get("refresh_token")
+
+            auth_token = st.session_state.get("auth_token") or str(uuid4())
+            st.session_state.auth_token = auth_token
+            save_auth_session(auth_token, session_data, user_data)
+            set_query_params(auth_token=auth_token)
 
             try:
                 sb_client.set_session(

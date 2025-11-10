@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 from config.settings import N8N_WEBHOOK_URL
 from services.supabase_client import SupabaseClient
 from services.supabase_service import cached_chat_messages, cached_chat_sessions
-from utils.messages import dedup_messages, display_text
+from utils.messages import dedup_messages, display_text, render_markdown_with_math
 from utils.query_params import get_query_params, set_query_params
 
 
@@ -143,14 +143,16 @@ def render_chat_interface(sb_client: SupabaseClient, available_subjects):
                         for message in display_messages:
                             role = "user" if message.get("role") == "user" else "assistant"
                             with st.chat_message(role):
-                                st.markdown(display_text(message.get("content")))
+                                render_markdown_with_math(display_text(message.get("content")))
                     else:
                         for message in display_messages:
                             text = display_text(message.get("content"))
                             if message.get("role") == "user":
-                                st.markdown(f"**Tú:** {text}")
+                                st.markdown("**Tú:**")
+                                render_markdown_with_math(text)
                             else:
-                                st.markdown(f"**Tutor:** {text}")
+                                st.markdown("**Tutor:**")
+                                render_markdown_with_math(text)
                             st.markdown("---")
 
             if st.session_state.get("_clear_user_input"):

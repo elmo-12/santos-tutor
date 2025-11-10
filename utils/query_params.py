@@ -24,3 +24,23 @@ def set_query_params(**params):
         except Exception:
             pass
 
+
+def remove_query_params(*keys: str):
+    """Elimina parámetros específicos de la URL."""
+    try:
+        params = dict(st.query_params)
+    except Exception:
+        try:
+            params = st.experimental_get_query_params()
+        except Exception:
+            params = {}
+    for key in keys:
+        params.pop(key, None)
+    try:
+        st.set_query_params(**params)
+    except Exception:
+        try:
+            st.experimental_set_query_params(**params)
+        except Exception:
+            pass
+
