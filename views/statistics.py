@@ -56,11 +56,19 @@ def render_statistics_interface(sb_client: SupabaseClient):
 
     st.markdown("### 🔎 Indicadores Avanzados")
 
-    grouped = df_difficulty.groupby("topic").agg({"success_count": "sum", "error_count": "sum"})
-    grouped["success_rate"] = grouped["success_count"] / (
-        grouped["success_count"] + grouped["error_count"]
-    ).replace(0, 1)
+    # --- Cálculo base ---
+    grouped = df_difficulty.groupby("topic").agg({
+        "success_count": "sum",
+        "error_count": "sum"
+    })
 
+    # Total de intentos
+    grouped["attempts"] = grouped["success_count"] + grouped["error_count"]
+
+    # Tasa de éxito
+    grouped["success_rate"] = grouped["success_count"] / grouped["attempts"].replace(0, 1)
+
+    # --- Indicadores por tasa de éxito ---
     best_topic = grouped["success_rate"].idxmax()
     worst_topic = grouped["success_rate"].idxmin()
 
@@ -68,19 +76,24 @@ def render_statistics_interface(sb_client: SupabaseClient):
 
     with colA:
         st.success(
-            f"✅ Mejor Tema: **{best_topic}** ({grouped.loc[best_topic, 'success_rate']*100:.1f}%)"
+            f"✅ Mejor Tema (mayor tasa de éxito): **{best_topic}** "
+            f"({grouped.loc[best_topic, 'success_rate']*100:.1f}%)"
         )
 
     with colB:
         st.warning(
-            f"🟠 Tema con más oportunidad: **{worst_topic}** ({grouped.loc[worst_topic, 'success_rate']*100:.1f}%)"
+            f"🟠 Tema con más oportunidad (menor tasa de éxito): **{worst_topic}** "
+            f"({grouped.loc[worst_topic, 'success_rate']*100:.1f}%)"
         )
 
-    if not df_exercises.empty:
-        topic_activity = df_exercises.groupby("topic").size().sort_values(ascending=False)
-        top_topic = topic_activity.index[0]
-        top_count = topic_activity.iloc[0]
-        st.info(f"📘 Tema más practicado: **{top_topic}** ({top_count} ejercicios)")
+    # --- Indicadores según número de intentos ---
+    most_attempts_topic = grouped["attempts"].idxmax()
+    least_attempts_topic = grouped["attempts"].idxmin()
+
+    st.info(
+        f"📌 Tema con **más intentos**: **{most_attempts_topic}** "
+        f"({grouped.loc[most_attempts_topic, 'attempts']} intentos)"
+    )
 
     st.markdown("---")
 
@@ -171,23 +184,23 @@ def render_statistics_interface(sb_client: SupabaseClient):
         df_exercises["date"] = pd.to_datetime(df_exercises["created_at"]).dt.date
         activity = df_exercises.groupby("date").size().reset_index(name="count")
         activity_pivot = activity.pivot_table(
-            values="count",
-            index=pd.to_datetime(activity["date"]).dt.dayofweek,
-            columns=pd.to_datetime(activity["date"]).dt.isocalendar().week,
-            fill_value=0,
-        )
+        values="count",
+        index=pd.to_datetime(activity["date"]).dt.dayofweek,
+        columns=activity["date"].astype(str),
+        fill_value=0,
+        )   
 
         day_labels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
         activity_pivot = activity_pivot.reindex(index=range(7), fill_value=0)
 
         fig = px.imshow(
-            activity_pivot.values,
-            labels=dict(x="Semana", y="Día", color="Ejercicios"),
-            x=[str(column) for column in activity_pivot.columns],
-            y=day_labels,
-            aspect="auto",
-            color_continuous_scale="YlGnBu",
+                activity_pivot.values,
+                labels=dict(x="Fecha", y="Día", color="Ejercicios"),
+                x=list(activity_pivot.columns),
+                y=day_labels,
+                aspect="auto",
+                color_continuous_scale="YlGnBu",
         )
 
         st.plotly_chart(fig, use_container_width=True)
-
+        

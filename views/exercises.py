@@ -50,7 +50,7 @@ def render_exercises_interface(sb_client: SupabaseClient, available_subjects):
                 if feedback_key not in st.session_state:
                     st.session_state[feedback_key] = ""
 
-                if st.session_state[show_input_key]:
+                if not exercise.get("completed") and st.session_state[show_input_key]:
                     user_key = f"respuesta_{exercise['id']}"
                     respuesta = st.text_area("Tu respuesta:", key=user_key)
 

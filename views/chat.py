@@ -110,17 +110,20 @@ def render_chat_interface(sb_client: SupabaseClient, available_subjects):
                 st.session_state.current_session = session_ids[-1]
 
             current_index = session_ids.index(st.session_state.current_session)
+            def on_session_change():
+                sid = st.session_state.session_selector
+                st.session_state.current_session = sid
+                st.session_state.chat_history = dedup_messages(cached_chat_messages(sid))
+                set_query_params(sid=sid)
+
             selected_id = st.selectbox(
                 "Historial de sesiones",
                 options=session_ids,
                 index=current_index,
                 format_func=lambda sid: labels_by_id.get(sid, sid),
+                key="session_selector",
+                on_change=on_session_change,
             )
-
-            if selected_id != st.session_state.current_session:
-                st.session_state.current_session = selected_id
-                set_query_params(sid=selected_id)
-                st.session_state.chat_history = dedup_messages(cached_chat_messages(selected_id))
 
     with col2:
         st.subheader("Chat")

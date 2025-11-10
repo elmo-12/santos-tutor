@@ -111,7 +111,7 @@ def render_pdf_report(sb_client: SupabaseClient):
         }
     ).reset_index()
 
-    table_data = [["Tema", "Dificultad Promedio", "Éxitos", "Errores", "Tasa de Éxito"]]
+    table_data = [["Tema", "Dificultad Promedio", "Intentos", "Tasa de Éxito"]]
     for _, topic in topic_analysis.iterrows():
         total = topic["success_count"] + topic["error_count"]
         success_rate = (topic["success_count"] / total * 100) if total > 0 else 0
@@ -119,8 +119,7 @@ def render_pdf_report(sb_client: SupabaseClient):
             [
                 topic["topic"],
                 f"{topic['difficulty_level']:.1f}/5",
-                str(topic["success_count"]),
-                str(topic["error_count"]),
+                str(total),
                 f"{success_rate:.1f}%",
             ]
         )
@@ -201,8 +200,8 @@ def render_pdf_report(sb_client: SupabaseClient):
             lines = ""
             for _, row in subset.iterrows():
                 lines += (
-                    f"• {row['topic']} — dificultad {row['avg_difficulty']:.1f}/5, "
-                    f"éxito {row['success_rate']*100:.1f}%<br/>"
+                    f"• {row['topic']}        - Nivel: {row['avg_difficulty']:.1f}, "
+                    f"   || Éxito: {row['success_rate']*100:.1f}%<br/>"
                 )
             story.append(Paragraph(lines, styles["SubTexto"]))
             story.append(Spacer(1, 6))
