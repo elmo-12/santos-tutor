@@ -139,14 +139,31 @@ class SupabaseClient:
     # ------------------------------------------------------------------
     # Estadísticas y ejercicios
     # ------------------------------------------------------------------
-    def get_difficulty_stats(self, user_id: str):
-        response = (
+
+    def get_difficulty_stats(self, user_id: str, subject_id: str = None):
+
+        query = (
             self.client.table("difficulty_tracking")
             .select("*")
             .eq("user_id", user_id)
+        )
+
+        if subject_id is not None:
+            query = query.eq("subject_id", subject_id)
+
+        response = query.execute()
+        return response.data
+    
+    def get_subjects(self):
+        """Retorna todas las materias activas."""
+        response = (
+            self.client.table("subjects")
+            .select("*")
+            .order("created_at", desc=False)
             .execute()
         )
         return response.data
+
 
     def get_exercise_stats(self, user_id: str):
         response = (

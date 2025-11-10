@@ -13,7 +13,7 @@ def render_statistics_interface(sb_client: SupabaseClient):
     st.title("📊 Panel de Estadísticas de Aprendizaje")
     st.markdown("Aquí puedes revisar tu evolución, hábitos y desempeño general.")
 
-    difficulty_data = sb_client.get_difficulty_stats(st.session_state.user_id)
+    difficulty_data = sb_client.get_difficulty_stats(st.session_state.user_id, subject_id=None)
     exercise_data = sb_client.get_exercise_stats(st.session_state.user_id)
 
     if not difficulty_data and not exercise_data:
@@ -203,4 +203,103 @@ def render_statistics_interface(sb_client: SupabaseClient):
         )
 
         st.plotly_chart(fig, use_container_width=True)
-        
+
+    # ======================================================
+    # 🎓 ESTADÍSTICAS POR CURSO
+    # ======================================================
+    st.markdown("---")
+
+    # Obtener nombres de cursos
+    subjects_map = {
+        sub["id"]: sub["name"]
+        for sub in sb_client.get_subjects()
+    }
+
+    if not df_difficulty.empty:
+
+        # --------------------------------------------
+        # Preparación de datos
+        # --------------------------------------------
+        df_difficulty["course"] = (
+            df_difficulty["subject_id"].map(subjects_map).fillna("Sin curso")
+        )
+
+        df_difficulty["attempts"] = (
+            df_difficulty["success_count"] + df_difficulty["error_count"]
+        )
+
+        df_difficulty["success_rate"] = (
+            df_difficulty["success_count"] /
+            df_difficulty["attempts"].replace(0, 1)
+        )
+
+        # --------------------------------------------
+        # Datos agregados por curso
+        # --------------------------------------------
+        exercises_by_course = (
+            df_difficulty.groupby("course")["topic"]
+            .nunique()
+            .reset_index(name="ejercicios_unicos")
+            .sort_values("ejercicios_unicos", ascending=False)
+        )
+
+        success_by_course = (
+            df_difficulty.groupby("course")["success_rate"]
+            .mean()
+            .reset_index()
+            .sort_values("success_rate", ascending=False)
+        )
+        success_by_course["success_rate"] = (
+            success_by_course["success_rate"] * 100
+        ).round(2)
+
+        # ======================================================
+        # 📊 2 GRÁFICOS EN UNA SOLA FILA
+        # ======================================================
+        col1, col2 = st.columns([6, 6])  # más separación automática
+
+
+        # ======================================================
+        # 📘 GRÁFICO 1 — EJERCICIOS ÚNICOS POR CURSO
+        # ======================================================
+        with col1:
+            st.subheader("📘 Ejercicios Únicos por Curso")
+
+            fig1 = px.bar(
+                exercises_by_course,
+                x="ejercicios_unicos",
+                y="course",
+                title="Cantidad de temas por curso",
+                orientation="h",
+                text_auto=True,
+            )
+
+            fig1.update_layout(
+                xaxis_title="Cantidad de temas",
+                yaxis_title="Curso",
+                title_x=0.3
+            )
+            st.plotly_chart(fig1, use_container_width=True)
+
+        # ======================================================
+        # ✅ GRÁFICO 2 — CALIFICACIÓN PROMEDIO POR CURSO
+        # ======================================================
+        with col2:
+            st.subheader("✅ Rendimiento por Curso (%)")
+
+            fig2 = px.pie(
+                success_by_course,
+                names="course",
+                values="success_rate",
+                hole=0.45,
+            )
+
+            fig2.update_traces(
+                textinfo="percent+label",
+                pull=[0.02] * len(success_by_course)
+            )
+
+            st.plotly_chart(fig2, use_container_width=True)
+
+    else:
+        st.info("Aún no hay datos suficientes para generar estadísticas de cursos.")
