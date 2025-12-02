@@ -1,0 +1,21 @@
+# Dependencias del proyecto Santos Tutor
+
+# Framework principal
+streamlit>=1.28.0
+
+# Base de datos y autenticación
+supabase>=2.0.0
+
+# Manejo de variables de entorno
+python-dotenv>=1.0.0
+
+# Análisis de datos y visualización
+pandas>=2.0.0
+plotly>=5.17.0
+
+# Generación de PDFs
+reportlab>=4.0.0
+
+# Peticiones HTTP
+requests>=2.31.0
+

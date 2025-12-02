@@ -1,9 +1,9 @@
 """Configuración centralizada para la aplicación Streamlit."""
 
 N8N_WEBHOOK_URL = "https://n8n.yamboly.lat/webhook/b4b0f8c6-7ec2-4672-bb84-31ec2b3e2c5c"
-SUPABASE_URL = "https://vvkmtgaarazlugtvabsz.supabase.co"
+SUPABASE_URL = "https://kxieicvtrimhozgrykex.supabase.co"
 SUPABASE_KEY = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2a210Z2FhcmF6bHVndHZhYnN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MzI3NDIsImV4cCI6MjA3ODMwODc0Mn0.wH6pbV2UAFxJaVcKU0xdI8FBwYaDq-heVAUEft2B0OE"
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4aWVpY3Z0cmltaG96Z3J5a2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODc5NzAsImV4cCI6MjA4MDI2Mzk3MH0.2bVO6YjcsaOCT70YeVuG7pZgmPSyM_j7VfR-zK6px1Q"
 )
 
 # Tablas y columnas relacionadas con la asignación de cursos.
