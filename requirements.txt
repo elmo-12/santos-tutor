@@ -19,3 +19,5 @@ reportlab>=4.0.0
 # Peticiones HTTP
 requests>=2.31.0
 
+
+

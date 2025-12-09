@@ -205,24 +205,42 @@ def main():
         handle_logout(sb_client)
         return
 
-    menu_options = [
-        "Dashboard Alumnos",
-        "Chat con Tutor",
-        "Ejercicios",
-        "Estadísticas",
-        "Reporte PDF",
+    menu_items = [
+        {"value": "Dashboard Alumnos", "label": "👥   Dashboard Alumnos"},
+        {"value": "Chat con Tutor", "label": "💬   Chat con Tutor"},
+        {"value": "Ejercicios", "label": "📝   Ejercicios"},
+        {"value": "Estadísticas", "label": "📊   Estadísticas"},
+        {"value": "Reporte PDF", "label": "📄   Reporte PDF"},
     ]
+    menu_values = [item["value"] for item in menu_items]
 
-    default_menu = st.session_state.get("selected_menu", menu_options[0])
-    if default_menu not in menu_options:
-        default_menu = menu_options[0]
+    default_menu = st.session_state.get("selected_menu", menu_values[0])
+    if default_menu not in menu_values:
+        default_menu = menu_values[0]
 
-    menu = st.sidebar.selectbox(
-        "Selecciona una opción",
-        menu_options,
-        index=menu_options.index(default_menu),
-        key="app_menu",
+    st.sidebar.markdown(
+        """
+        <style>
+        section[data-testid="stSidebar"] .stButton > button {
+            justify-content: flex-start;
+            text-align: left;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
+
+    menu = st.session_state.get("selected_menu", default_menu)
+    st.sidebar.markdown("**Selecciona una opción**")
+    for item in menu_items:
+        if st.sidebar.button(
+            item["label"],
+            key=f"menu_btn_{item['value']}",
+            use_container_width=True,
+        ):
+            menu = item["value"]
+    if menu not in menu_values:
+        menu = menu_values[0]
     st.session_state.selected_menu = menu
 
     if menu == "Dashboard Alumnos":
