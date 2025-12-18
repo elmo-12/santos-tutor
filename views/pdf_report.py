@@ -12,6 +12,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 import streamlit as st
+import streamlit.components.v1 as components
 
 from services.supabase_client import SupabaseClient
 
@@ -220,21 +221,117 @@ def render_pdf_report(sb_client: SupabaseClient):
 
     pdf.build(story)
     buffer.seek(0)
-
-    pdf_b64 = b64encode(buffer.read()).decode("utf-8")
+    
+    # Leer el contenido del PDF
+    pdf_bytes = buffer.read()
+    pdf_b64 = b64encode(pdf_bytes).decode("utf-8")
+    
+    # Resetear el buffer para el botón de descarga
+    buffer.seek(0)
 
     st.success("✅ Reporte PDF generado correctamente.")
 
-    with st.expander("Vista previa del reporte"):
-        pdf_display = (
-            f'<iframe src="data:application/pdf;base64,{pdf_b64}" width="100%" height="600px"></iframe>'
-        )
-        st.markdown(pdf_display, unsafe_allow_html=True)
+    with st.expander("Vista previa del reporte", expanded=True):
+        # Solución multi-navegador para visualización de PDF
+        # Usamos múltiples métodos para máxima compatibilidad entre dispositivos
+        
+        # HTML con múltiples fallbacks para diferentes navegadores
+        pdf_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                .pdf-container {{
+                    width: 100%;
+                    height: 600px;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    overflow: hidden;
+                    background: #f5f5f5;
+                }}
+                .pdf-viewer {{
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                }}
+                .fallback-message {{
+                    padding: 40px 20px;
+                    text-align: center;
+                    color: #666;
+                    font-family: Arial, sans-serif;
+                    background: white;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                }}
+            </style>
+        </head>
+        <body style="margin: 0; padding: 0;">
+            <div class="pdf-container">
+                <!-- Método 1: Object tag (mejor para Chrome/Edge desktop) -->
+                <object data="data:application/pdf;base64,{pdf_b64}#toolbar=1&navpanes=1&scrollbar=1" 
+                        type="application/pdf" 
+                        class="pdf-viewer"
+                        id="pdf-object">
+                    <!-- Método 2: Embed tag (fallback para Firefox) -->
+                    <embed src="data:application/pdf;base64,{pdf_b64}#toolbar=1&navpanes=1&scrollbar=1" 
+                           type="application/pdf" 
+                           class="pdf-viewer"
+                           id="pdf-embed">
+                        <!-- Método 3: Iframe (fallback para algunos móviles) -->
+                        <iframe src="data:application/pdf;base64,{pdf_b64}#toolbar=1&navpanes=1&scrollbar=1" 
+                                class="pdf-viewer"
+                                id="pdf-iframe">
+                            <!-- Mensaje final si nada funciona -->
+                            <div class="fallback-message">
+                                <p style="font-size: 18px; margin-bottom: 10px;">⚠️ Vista previa no disponible</p>
+                                <p style="font-size: 14px;">Tu navegador no puede mostrar la vista previa del PDF.</p>
+                                <p style="font-size: 14px;">Por favor, descarga el archivo usando el botón de abajo.</p>
+                            </div>
+                        </iframe>
+                    </embed>
+                </object>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Usar components.html para mejor compatibilidad en Streamlit Cloud/desplegado
+        components.html(pdf_html, height=600, scrolling=False)
+        
+        # Mensaje informativo y opciones alternativas
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.info("💡 **Nota:** Si la vista previa no se muestra, descarga el PDF o usa el botón para abrir en nueva ventana.")
+        
+        with col2:
+            # Crear un enlace para abrir el PDF en nueva pestaña (más confiable)
+            pdf_data_uri = f"data:application/pdf;base64,{pdf_b64}"
+            open_pdf_html = f"""
+            <a href="{pdf_data_uri}" target="_blank" rel="noopener noreferrer" style="
+                display: inline-block;
+                padding: 8px 16px;
+                background-color: #1f77b4;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                font-size: 14px;
+                text-align: center;
+            ">
+                🔍 Abrir en nueva ventana
+            </a>
+            """
+            st.markdown(open_pdf_html, unsafe_allow_html=True)
 
+    # Botón de descarga principal
     st.download_button(
         label="📥 Descargar Reporte PDF",
         data=buffer.getvalue(),
         file_name=f"reporte_tutor_{datetime.now().strftime('%Y%m%d')}.pdf",
         mime="application/pdf",
+        use_container_width=True,
     )
 

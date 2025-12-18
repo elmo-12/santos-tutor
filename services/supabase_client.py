@@ -17,7 +17,35 @@ class SupabaseClient:
     """Encapsula el cliente de Supabase y operaciones frecuentes."""
 
     def __init__(self, url: str, key: str):
-        self.client = supabase.create_client(url, key)
+        # Validar que la URL no esté vacía
+        if not url or not url.strip():
+            raise ValueError("SUPABASE_URL no puede estar vacía. Verifica config/settings.py")
+        
+        # Validar que la URL tenga el formato correcto
+        url = url.strip()
+        if not url.startswith("http://") and not url.startswith("https://"):
+            raise ValueError(f"SUPABASE_URL debe comenzar con http:// o https://. URL recibida: {url}")
+        
+        # Validar que la key no esté vacía
+        if not key or not key.strip():
+            raise ValueError("SUPABASE_KEY no puede estar vacía. Verifica config/settings.py")
+        
+        try:
+            self.client = supabase.create_client(url, key)
+        except Exception as e:
+            error_msg = str(e)
+            if "Name or service not known" in error_msg or "Errno -2" in error_msg:
+                raise ConnectionError(
+                    f"No se puede conectar a Supabase. Error de DNS/resolución de nombres.\n"
+                    f"URL intentada: {url}\n"
+                    f"Verifica que:\n"
+                    f"  1. La URL sea correcta y accesible\n"
+                    f"  2. Tengas conexión a internet\n"
+                    f"  3. El nombre del servidor sea válido\n"
+                    f"  4. No haya firewall bloqueando la conexión\n"
+                    f"Error original: {error_msg}"
+                ) from e
+            raise
 
     # ------------------------------------------------------------------
     # Autenticación

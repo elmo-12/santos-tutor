@@ -105,7 +105,33 @@ def render_login(sb_client: SupabaseClient):
 
             st.success("Inicio de sesión exitoso. Redirigiendo al dashboard…")
             _trigger_rerun()
+        except ConnectionError as exc:
+            # Error de conexión/DNS - mostrar mensaje más descriptivo
+            st.error(f"❌ Error de conexión: {exc}")
+            st.info("💡 **Sugerencias:**\n"
+                   "- Verifica tu conexión a internet\n"
+                   "- Confirma que la URL de Supabase en `config/settings.py` sea correcta\n"
+                   "- Prueba abrir la URL de Supabase en tu navegador")
+            st.session_state.login_error = str(exc)
+        except ValueError as exc:
+            # Error de configuración
+            st.error(f"❌ Error de configuración: {exc}")
+            st.info("💡 Verifica que `SUPABASE_URL` y `SUPABASE_KEY` estén correctamente configurados en `config/settings.py`")
+            st.session_state.login_error = str(exc)
         except Exception as exc:
-            st.session_state.login_error = f"No fue posible iniciar sesión: {exc}"
+            error_msg = str(exc)
+            # Detectar errores de autenticación comunes
+            if "Invalid login credentials" in error_msg or "invalid_credentials" in error_msg.lower():
+                st.error("❌ Credenciales incorrectas. Verifica tu email y contraseña.")
+            elif "Name or service not known" in error_msg or "Errno -2" in error_msg:
+                st.error("❌ No se puede conectar al servidor de Supabase.\n\n"
+                        "**Posibles causas:**\n"
+                        "- Problema de conexión a internet\n"
+                        "- URL de Supabase incorrecta\n"
+                        "- Firewall bloqueando la conexión\n\n"
+                        "Verifica la URL en `config/settings.py` y tu conexión a internet.")
+            else:
+                st.error(f"❌ No fue posible iniciar sesión: {error_msg}")
+            st.session_state.login_error = error_msg
             _trigger_rerun()
 
