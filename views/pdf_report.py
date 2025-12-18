@@ -321,18 +321,64 @@ def render_pdf_report(sb_client: SupabaseClient):
         pdf.build(story)
         buffer.seek(0)
         pdf_b64 = b64encode(buffer.read()).decode("utf-8")
+        buffer.seek(0)
+        
         st.success("✅ Reporte PDF generado correctamente.")
-        with st.expander("Vista previa del reporte"):
-            pdf_display = (
-                f'<iframe src="data:application/pdf;base64,{pdf_b64}" width="100%" height="600px"></iframe>'
+        
+        # Resumen del reporte
+        st.info("📄 **Reporte PDF generado exitosamente.** El archivo contiene análisis básico de tu desempeño académico.")
+        
+        # Opciones para ver/descargar el PDF
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Botón para abrir PDF en nueva ventana
+            open_pdf_html = f"""
+            <script>
+            function openPDF() {{
+                const base64Data = "{pdf_b64}";
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {{
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }}
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], {{ type: 'application/pdf' }});
+                const blobUrl = URL.createObjectURL(blob);
+                const newWindow = window.open(blobUrl, '_blank');
+                if (newWindow) {{
+                    newWindow.focus();
+                }} else {{
+                    alert('Por favor, permite ventanas emergentes para este sitio.');
+                }}
+            }}
+            </script>
+            <button onclick="openPDF()" style="
+                width: 100%;
+                padding: 12px 24px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            ">
+                🔍 Abrir PDF en Nueva Ventana
+            </button>
+            """
+            components.html(open_pdf_html, height=60)
+        
+        with col2:
+            st.download_button(
+                label="📥 Descargar Reporte PDF",
+                data=buffer.getvalue(),
+                file_name=f"reporte_tutor_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
             )
-            st.markdown(pdf_display, unsafe_allow_html=True)
-        st.download_button(
-            label="📥 Descargar Reporte PDF",
-            data=buffer.getvalue(),
-            file_name=f"reporte_tutor_{datetime.now().strftime('%Y%m%d')}.pdf",
-            mime="application/pdf",
-        )
+        
         return
 
     # Identificar temas críticos
@@ -640,169 +686,27 @@ def render_pdf_report(sb_client: SupabaseClient):
     
     # Leer el contenido del PDF
     pdf_bytes = buffer.read()
+    # Codificar a base64 de forma segura para JavaScript
     pdf_b64 = b64encode(pdf_bytes).decode("utf-8")
     
     # Resetear el buffer para el botón de descarga
     buffer.seek(0)
+    
+    # Validar que el PDF se generó correctamente
+    if len(pdf_bytes) == 0:
+        st.error("Error: El PDF generado está vacío.")
+        return
 
     st.success("✅ Reporte PDF generado correctamente.")
 
-    with st.expander("Vista previa del reporte", expanded=True):
-        # Solución usando Blob URL con JavaScript para máxima compatibilidad
-        # Esto evita los problemas de seguridad con data URIs en navegadores de escritorio
-        
-        pdf_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    font-family: Arial, sans-serif;
-                }}
-                .pdf-container {{
-                    width: 100%;
-                    height: 600px;
-                    border: 1px solid #ccc;
-                    border-radius: 5px;
-                    overflow: hidden;
-                    background: #f5f5f5;
-                    position: relative;
-                }}
-                .pdf-viewer {{
-                    width: 100%;
-                    height: 100%;
-                    border: none;
-                    display: block;
-                }}
-                .loading-message {{
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    text-align: center;
-                    color: #666;
-                    font-size: 16px;
-                }}
-                .error-message {{
-                    padding: 40px 20px;
-                    text-align: center;
-                    color: #666;
-                    background: white;
-                    height: 100%;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="pdf-container">
-                <div class="loading-message" id="loading">Cargando PDF...</div>
-                <iframe id="pdf-iframe" class="pdf-viewer" style="display: none;"></iframe>
-                <object id="pdf-object" class="pdf-viewer" type="application/pdf" style="display: none;"></object>
-                <embed id="pdf-embed" class="pdf-viewer" type="application/pdf" style="display: none;"></embed>
-            </div>
-            
-            <script>
-                (function() {{
-                    // Convertir base64 a blob
-                    const base64Data = "{pdf_b64}";
-                    const byteCharacters = atob(base64Data);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {{
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    }}
-                    const byteArray = new Uint8Array(byteNumbers);
-                    const blob = new Blob([byteArray], {{ type: 'application/pdf' }});
-                    const blobUrl = URL.createObjectURL(blob);
-                    
-                    // Intentar diferentes métodos de visualización
-                    const pdfUrl = blobUrl + '#toolbar=1&navpanes=1&scrollbar=1';
-                    const loadingEl = document.getElementById('loading');
-                    const iframeEl = document.getElementById('pdf-iframe');
-                    const objectEl = document.getElementById('pdf-object');
-                    const embedEl = document.getElementById('pdf-embed');
-                    
-                    // Función para mostrar el visor
-                    function showViewer(element) {{
-                        loadingEl.style.display = 'none';
-                        element.style.display = 'block';
-                    }}
-                    
-                    // Función para manejar errores
-                    function showError() {{
-                        loadingEl.innerHTML = `
-                            <div class="error-message">
-                                <p style="font-size: 18px; margin-bottom: 10px;">⚠️ Vista previa no disponible</p>
-                                <p style="font-size: 14px;">Tu navegador no puede mostrar la vista previa del PDF.</p>
-                                <p style="font-size: 14px;">Por favor, descarga el archivo usando el botón de abajo.</p>
-                            </div>
-                        `;
-                    }}
-                    
-                    // Intentar con iframe primero (mejor compatibilidad)
-                    iframeEl.src = pdfUrl;
-                    iframeEl.onload = function() {{
-                        showViewer(iframeEl);
-                    }};
-                    iframeEl.onerror = function() {{
-                        // Fallback a object
-                        objectEl.data = pdfUrl;
-                        objectEl.onload = function() {{
-                            showViewer(objectEl);
-                        }};
-                        objectEl.onerror = function() {{
-                            // Fallback a embed
-                            embedEl.src = pdfUrl;
-                            embedEl.onload = function() {{
-                                showViewer(embedEl);
-                            }};
-                            embedEl.onerror = function() {{
-                                showError();
-                            }};
-                        }};
-                    }};
-                    
-                    // Timeout de seguridad
-                    setTimeout(function() {{
-                        if (loadingEl.style.display !== 'none') {{
-                            // Si después de 3 segundos aún está cargando, intentar mostrar
-                            if (iframeEl.src) {{
-                                showViewer(iframeEl);
-                            }} else if (objectEl.data) {{
-                                showViewer(objectEl);
-                            }} else if (embedEl.src) {{
-                                showViewer(embedEl);
-                            }} else {{
-                                showError();
-                            }}
-                        }}
-                    }}, 3000);
-                    
-                    // Limpiar blob URL cuando se cierre la página (opcional)
-                    window.addEventListener('beforeunload', function() {{
-                        URL.revokeObjectURL(blobUrl);
-                    }});
-                }})();
-            </script>
-        </body>
-        </html>
-        """
-        
-        # Usar components.html para mejor compatibilidad en Streamlit Cloud/desplegado
-        components.html(pdf_html, height=600, scrolling=False)
-        
-        # Mensaje informativo y opciones alternativas
-        st.info("💡 **Nota:** Si la vista previa no se muestra correctamente, usa el botón de descarga para ver el PDF.")
-        
-        # Botón alternativo usando JavaScript para crear blob URL
-        open_pdf_js = f"""
+    # Botones de acción
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Botón para abrir PDF en nueva ventana
+        open_pdf_html = f"""
         <script>
-        function openPDFInNewWindow() {{
+        function openPDF() {{
             const base64Data = "{pdf_b64}";
             const byteCharacters = atob(base64Data);
             const byteNumbers = new Array(byteCharacters.length);
@@ -815,27 +719,30 @@ def render_pdf_report(sb_client: SupabaseClient):
             window.open(blobUrl, '_blank');
         }}
         </script>
-        <button onclick="openPDFInNewWindow()" style="
-            padding: 8px 16px;
-            background-color: #1f77b4;
+        <button onclick="openPDF()" style="
+            width: 100%;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         ">
-            🔍 Abrir PDF en nueva ventana
+            🔍 Abrir PDF en Nueva Ventana
         </button>
         """
-        components.html(open_pdf_js, height=50)
-
-    # Botón de descarga principal
-    st.download_button(
-        label="📥 Descargar Reporte PDF",
-        data=buffer.getvalue(),
-        file_name=f"reporte_tutor_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf",
-        use_container_width=True,
-    )
+        components.html(open_pdf_html, height=60)
+    
+    with col2:
+        # Botón de descarga
+        st.download_button(
+            label="📥 Descargar Reporte PDF",
+            data=buffer.getvalue(),
+            file_name=f"reporte_tutor_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
 
